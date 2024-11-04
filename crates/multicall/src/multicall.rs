@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use alloy_contract::{CallBuilder, CallDecoder, RawCallBuilder};
+use alloy_contract::{CallBuilder, RawCallBuilder};
 use alloy_network::{Network, TransactionBuilder};
 use alloy_primitives::{Address, Bytes};
 use alloy_provider::Provider;
@@ -70,18 +70,24 @@ where
     }
 
     /// Add a call to the Multicall
-    pub fn add_call(&mut self, call: RawCallBuilder<T, &P, N>) {
-        self.calls.push(call.with_cloned_provider());
-    }
+    pub fn add_call<D>(&mut self, call: &CallBuilder<T, &P, D, N>) {
+        let req = call.as_ref();
 
-    /// Add multiple calls
-    pub fn add_calls(&mut self, calls: Vec<RawCallBuilder<T, &P, N>>) {
-        for call in calls {
-            self.add_call(call);
-        }
+        let raw = RawCallBuilder::new_raw(
+            call.provider,
+            req.input().map_or(Bytes::new(), |input| input.clone()),
+        )
+        .to(req.to().unwrap_or_default())
+        .with_cloned_provider();
+
+        self.calls.push(raw);
     }
 
     /// Execute the calls
+    ///
+    /// Note:
+    ///
+    /// The calls are executed in the order they are added.
     pub async fn call(self) -> TransportResult<AggregateReturn> {
         let mut calls = Vec::new();
         for call in &self.calls {
@@ -136,14 +142,10 @@ mod test {
         let symbol = weth.symbol();
         let decimals = weth.decimals();
 
-        let calls = vec![
-            total_supply.clone().clear_decoder(),
-            name.clone().clear_decoder(),
-            symbol.clone().clear_decoder(),
-            decimals.clone().clear_decoder(),
-        ];
-
-        multicall.add_calls(calls.clone());
+        multicall.add_call(&total_supply);
+        multicall.add_call(&name);
+        multicall.add_call(&symbol);
+        multicall.add_call(&decimals);
 
         let result = multicall.call().await.unwrap();
 
