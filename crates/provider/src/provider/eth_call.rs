@@ -239,6 +239,11 @@ where
             _pd: PhantomData,
         }
     }
+
+    /// Reference to the underlying tx request.
+    pub fn request(&self) -> &'req N::TransactionRequest {
+        self.data
+    }
 }
 
 impl<'req, T, N, Resp, Output, Map> EthCall<'req, T, N, Resp, Output, Map>
