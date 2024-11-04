@@ -40,12 +40,8 @@ where
     T: Transport + Clone,
     N: Network,
 {
-    /// Address of the deployed Multicall3 contract
-    address: Address,
     /// Calls get drained every `interval` milliseconds. Default is 50ms.
     interval: Duration,
-    /// Provider
-    provider: P,
     /// Multicall3 Instance
     instance: Multicall3Instance<T, P, N>,
     /// Calls to be made
@@ -61,10 +57,8 @@ where
     /// Create a new Multicall instance
     pub fn new(address: Address, provider: P) -> Self {
         Self {
-            address,
             interval: Duration::from_millis(50),
-            instance: Multicall3::new(address, provider.clone()),
-            provider,
+            instance: Multicall3::new(address, provider),
             calls: Default::default(),
         }
     }
@@ -76,7 +70,7 @@ where
     }
 
     /// Add a call to the Multicall
-    pub fn add_call<D>(&mut self, call: &CallBuilder<T, &P, D, N>) {
+    pub fn add_call<D>(&self, call: &CallBuilder<T, &P, D, N>) {
         let req = call.as_ref();
 
         let raw = RawCallBuilder::new_raw(
